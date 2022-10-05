@@ -1,11 +1,9 @@
-$exportpath = "C:\teamlogicworking\bitlockeroutput.txt"
+$exportpath = $args[0]
 $gettpmresult = get-tpm | select-object TpmReady
 if($gettpmresult.TpmReady){
     $bitlockerstatus = manage-bde -status c:
     $bitlockerstatus | Out-File $exportpath -Append
-    #write-host($bitlockerstatus.ToLower())   
     if($bitlockerstatus -like "*fully decrypted*"){
-        write-host("Ready to Encrypt")
-        manage-bde -on c: -RecoveryPassword -skiphardwaretest | out-file $exportpath -Append
+        #manage-bde -on c: -RecoveryPassword -skiphardwaretest | out-file $exportpath -Append
     }
 }

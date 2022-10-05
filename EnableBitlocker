@@ -1,4 +1,4 @@
-$exportpath = $args[0]
+$exportpath = c:\temp\BitlockerEnableOutput.txt #$args[0]
 $gettpmresult = get-tpm | select-object TpmReady
 if($gettpmresult.TpmReady){
     $bitlockerstatus = manage-bde -status c:

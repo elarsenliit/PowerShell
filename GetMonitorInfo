@@ -1,0 +1,48 @@
+
+# Get monitor connection type
+$connectionInfo = Get-CimInstance -Namespace root\wmi -ClassName WmiMonitorConnectionParams |
+    Select-Object InstanceName, VideoOutputTechnology
+
+# Get basic display params
+$displayParams = Get-CimInstance -Namespace root\wmi -ClassName WmiMonitorBasicDisplayParams |
+    Select-Object InstanceName, MaxHorizontalImageSize, MaxVerticalImageSize
+
+# Get EDID info (manufacturer, serial)
+$monitorID = Get-CimInstance -Namespace root\wmi -ClassName WmiMonitorID |
+    Select-Object InstanceName,
+                  @{Name='Manufacturer';Expression={[System.Text.Encoding]::ASCII.GetString($_.ManufacturerName)}},
+                  @{Name='SerialNumber';Expression={[System.Text.Encoding]::ASCII.GetString($_.SerialNumberID)}},
+                  @{Name='Model';Expression={[System.Text.Encoding]::ASCII.GetString($_.UserFriendlyName)}}
+
+# Get resolution info
+$resolutionInfo = Get-CimInstance Win32_DesktopMonitor |
+    Select-Object DeviceID, ScreenWidth, ScreenHeight
+
+# Combine all info
+$combined = foreach ($conn in $connectionInfo) {
+    $id = $conn.InstanceName
+    $disp = $displayParams | Where-Object { $_.InstanceName -eq $id }
+    $monID = $monitorID | Where-Object { $_.InstanceName -eq $id }
+    $res = $resolutionInfo | Where-Object { $_.DeviceID -like "*$($id.Split('\')[1])*" }
+    
+    [PSCustomObject]@{
+        MonitorID      = $id
+        ConnectionType = switch ($conn.VideoOutputTechnology) {
+            5 { "HDMI" }
+            8 { "DisplayPort" }
+            10 { "Docking DisplayPort" }
+            2147483648 { "Internal Laptop Display" }
+            2 { "DVI" }
+            1 { "VGA" }
+            default { "Other ($($_.VideoOutputTechnology))" }
+        }
+        Manufacturer   = $monID.Manufacturer
+        SerialNumber   = $monID.SerialNumber
+        ModelNum       = $monID.Model
+        Resolution     = if ($res) { "$($res.ScreenWidth)x$($res.ScreenHeight)" } else { "Unknown Res" }
+        Size_mm        = if ($disp) { "$($disp.MaxHorizontalImageSize) x $($disp.MaxVerticalImageSize)" } else { "Unknown Size" }
+    }
+}
+
+# Output as table
+$combined | Format-Table -AutoSize >> C:\TeamLogicWorking\MonitorInfo.txt
